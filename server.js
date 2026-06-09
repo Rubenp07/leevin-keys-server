@@ -5,8 +5,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const SHEET_ID = '1TpHPMJvdTKZqtN9OxXAGR94geTA-9itkjNi4KR31kGQ';
-const SHEET_NAME = 'New1';
+const SHEET_ID = '1F0s1yeToNckVqeu1mh3uNNh42u1zvg5SMEHLo4l22FU';
+const SHEET_NAME = 'prueba';
 
 const auth = new google.auth.JWT(
   'keys-system@clever-environs-478712-g2.iam.gserviceaccount.com',
