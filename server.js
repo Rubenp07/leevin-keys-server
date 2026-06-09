@@ -24,7 +24,7 @@ async function findKeyRow(code) {
   });
   const rows = res.data.values || [];
   for (let i = 0; i < rows.length; i++) {
-    if (rows[i][0] && rows[i][0].toString().trim() === code) return i + 1;
+if (rows[i][0] && rows[i][0].toString().trim().toUpperCase() === code.toUpperCase()) return i + 1;
   }
   return null;
 }
