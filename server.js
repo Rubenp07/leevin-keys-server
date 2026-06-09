@@ -44,7 +44,7 @@ app.post('/update-key', async (req, res) => {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: SHEET_NAME + '!H' + rowNum + ':K' + rowNum,
-      valueInputOption: 'RAW',
+valueInputOption: 'USER_ENTERED',
       requestBody: { values }
     });
     console.log('OK: ' + code + ' -> ' + status);
