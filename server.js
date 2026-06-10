@@ -17,6 +17,13 @@ const auth = new google.auth.JWT(
 
 const sheets = google.sheets({ version: 'v4', auth });
 
+function getDate() {
+  return new Date().toLocaleDateString('es-ES', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
 async function findKeyRow(code) {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
@@ -24,41 +31,36 @@ async function findKeyRow(code) {
   });
   const rows = res.data.values || [];
   for (let i = 0; i < rows.length; i++) {
-if (rows[i][0] && rows[i][0].toString().trim().toUpperCase() === code.toUpperCase()) return i + 1;
+    if (rows[i][0] && rows[i][0].toString().trim().toUpperCase() === code.toUpperCase()) return i + 1;
   }
   return null;
 }
 
 app.post('/update-key', async (req, res) => {
   try {
-    const { code, status, name, dept, dateTaken } = req.body;
+    const { code, status, name, dept } = req.body;
     if (!code || !status) return res.status(400).json({ error: 'Faltan campos' });
+
     const rowNum = await findKeyRow(code);
-    if (!rowNum) return res.status(404).json({ error: 'Llave no encontrada' });
-    const now = dateTaken || new Date().toLocaleDateString('es-ES');
-const values = [[
-  status,
-  name || '',
-  dept || '',
-  status === 'In use' ? now : '',
-  status === 'Available' ? now : '',
-  const now = dateTaken || new Date().toLocaleDateString('es-ES');
-const values = [[
-  status,
-  name || '',
-  dept || '',
-  status === 'In use' ? now : '',
-  status === 'Available' ? now : '',
-  status === 'Available' ? name || '' : ''
-]];
-]];
-await sheets.spreadsheets.values.update({
-  spreadsheetId: SHEET_ID,
-  range: SHEET_NAME + '!H' + rowNum + ':M' + rowNum,
-valueInputOption: 'USER_ENTERED',
+    if (!rowNum) return res.status(404).json({ error: 'Llave no encontrada: ' + code });
+
+    const now = getDate();
+    let values;
+
+    if (status === 'In use') {
+      values = [['In use', name || '', dept || '', now, '', '']];
+    } else {
+      values = [['Available', '', '', '', now, name || '']];
+    }
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: SHEET_NAME + '!H' + rowNum + ':M' + rowNum,
+      valueInputOption: 'USER_ENTERED',
       requestBody: { values }
     });
-    console.log('OK: ' + code + ' -> ' + status);
+
+    console.log('OK: ' + code + ' -> ' + status + ' | ' + name + ' | fila ' + rowNum);
     res.json({ ok: true });
   } catch (err) {
     console.error('Error:', err.message);
