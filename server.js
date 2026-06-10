@@ -42,7 +42,15 @@ const values = [[
   dept || '',
   status === 'In use' ? now : '',
   status === 'Available' ? now : '',
-  name || ''
+  const now = dateTaken || new Date().toLocaleDateString('es-ES');
+const values = [[
+  status,
+  name || '',
+  dept || '',
+  status === 'In use' ? now : '',
+  status === 'Available' ? now : '',
+  status === 'Available' ? name || '' : ''
+]];
 ]];
 await sheets.spreadsheets.values.update({
   spreadsheetId: SHEET_ID,
