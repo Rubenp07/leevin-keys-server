@@ -35,15 +35,18 @@ app.post('/update-key', async (req, res) => {
     if (!code || !status) return res.status(400).json({ error: 'Faltan campos' });
     const rowNum = await findKeyRow(code);
     if (!rowNum) return res.status(404).json({ error: 'Llave no encontrada' });
-    const values = [[
-      status,
-      name || '',
-      dept || '',
-      status === 'In use' ? (dateTaken || new Date().toLocaleDateString('es-ES')) : ''
-    ]];
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: SHEET_NAME + '!H' + rowNum + ':K' + rowNum,
+    const now = dateTaken || new Date().toLocaleDateString('es-ES');
+const values = [[
+  status,
+  name || '',
+  dept || '',
+  status === 'In use' ? now : '',
+  status === 'Available' ? now : '',
+  name || ''
+]];
+await sheets.spreadsheets.values.update({
+  spreadsheetId: SHEET_ID,
+  range: SHEET_NAME + '!H' + rowNum + ':M' + rowNum,
 valueInputOption: 'USER_ENTERED',
       requestBody: { values }
     });
