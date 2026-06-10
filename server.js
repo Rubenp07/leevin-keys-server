@@ -48,11 +48,9 @@ app.post('/update-key', async (req, res) => {
     let values;
 
     if (status === 'In use') {
-      // H=In use, I=nombre, J=dept, K=fecha tomada, L=vacío, M=vacío, N=vacío, O=comentario
-      values = [['In use', name || '', dept || '', now, '', '', '', comment || '']];
+      values = [['In use', name||'', dept||'', now, '', '', '', comment||'']];
     } else {
-      // H=Available, I=vacío, J=vacío, K=vacío, L=fecha devuelta, M=última persona, N=vacío, O=comentario
-      values = [['Available', '', '', '', now, name || '', '', comment || '']];
+      values = [['Available', '', '', '', now, name||'', '', comment||'']];
     }
 
     await sheets.spreadsheets.values.update({
@@ -70,7 +68,6 @@ app.post('/update-key', async (req, res) => {
   }
 });
 
-// Recordatorio automático: revisa cada hora llaves con más de 2 días en uso
 async function checkReminders() {
   try {
     const res = await sheets.spreadsheets.values.get({
@@ -80,22 +77,25 @@ async function checkReminders() {
     const rows = res.data.values || [];
     const now = new Date();
     for (let i = 1; i < rows.length; i++) {
-      const status = rows[i][3]; // col H
-      const dateTaken = rows[i][6]; // col K
-      const reminded = rows[i][9]; // col N
-      if (status === 'In use' && dateTaken && reminded !== 'Sí') {
-        const parts = dateTaken.split(/[/, ]/);
-        const taken = new Date(parts[2], parts[1]-1, parts[0]);
-        const diffDays = (now - taken) / (1000 * 60 * 60 * 24);
-        if (diffDays >= 2) {
-          const rowNum = i + 1;
-          await sheets.spreadsheets.values.update({
-            spreadsheetId: SHEET_ID,
-            range: SHEET_NAME + '!N' + rowNum,
-            valueInputOption: 'USER_ENTERED',
-            requestBody: { values: [['Sí']] }
-          });
-          console.log('Recordatorio marcado: fila ' + rowNum);
+      const status = rows[i][3];
+      const dateTaken = rows[i][6];
+      const reminded = rows[i][9];
+      if (status === 'In use' && dateTaken && dateTaken.trim() !== '' && reminded !== 'Sí') {
+        const parts = dateTaken.split(/[/,\s:]+/);
+        if (parts.length >= 3) {
+          const taken = new Date(parts[2], parts[1]-1, parts[0]);
+          if (!isNaN(taken.getTime())) {
+            const diffDays = (now - taken) / (1000 * 60 * 60 * 24);
+            if (diffDays >= 2) {
+              await sheets.spreadsheets.values.update({
+                spreadsheetId: SHEET_ID,
+                range: SHEET_NAME + '!N' + (i + 1),
+                valueInputOption: 'USER_ENTERED',
+                requestBody: { values: [['Sí']] }
+              });
+              console.log('Recordatorio marcado: fila ' + (i + 1));
+            }
+          }
         }
       }
     }
@@ -104,8 +104,8 @@ async function checkReminders() {
   }
 }
 
-setInterval(checkReminders, 60 * 60 * 1000); // cada hora
-checkReminders(); // al arrancar
+setInterval(checkReminders, 60 * 60 * 1000);
+checkReminders();
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
