@@ -36,30 +36,50 @@ async function findKeyRow(code) {
   return null;
 }
 
+app.get('/key-info/:code', async (req, res) => {
+  try {
+    const code = req.params.code.toUpperCase();
+    const rowNum = await findKeyRow(code);
+    if (!rowNum) return res.status(404).json({ error: 'No encontrada' });
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: SHEET_NAME + '!H' + rowNum + ':O' + rowNum
+    });
+    const row = result.data.values?.[0] || [];
+    res.json({
+      status:       row[0] || '',
+      name:         row[1] || '',
+      dept:         row[2] || '',
+      dateTaken:    row[3] || '',
+      dateReturned: row[4] || '',
+      lastPerson:   row[5] || '',
+      reminder:     row[6] || '',
+      comment:      row[7] || '',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/update-key', async (req, res) => {
   try {
     const { code, status, name, dept, comment } = req.body;
     if (!code || !status) return res.status(400).json({ error: 'Faltan campos' });
-
     const rowNum = await findKeyRow(code);
     if (!rowNum) return res.status(404).json({ error: 'Llave no encontrada: ' + code });
-
     const now = getDate();
     let values;
-
     if (status === 'In use') {
       values = [['In use', name||'', dept||'', now, '', '', '', comment||'']];
     } else {
       values = [['Available', '', '', '', now, name||'', '', comment||'']];
     }
-
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: SHEET_NAME + '!H' + rowNum + ':O' + rowNum,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values }
     });
-
     console.log('OK: ' + code + ' -> ' + status + ' | ' + name + ' | fila ' + rowNum);
     res.json({ ok: true });
   } catch (err) {
