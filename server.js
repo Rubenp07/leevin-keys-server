@@ -70,9 +70,15 @@ app.post('/update-key', async (req, res) => {
     const now = getDate();
     let values;
     if (status === 'In use') {
+     if (status === 'In use') {
       values = [['In use', name||'', dept||'', now, '', '', '', comment||'']];
     } else {
-      values = [['Available', '', '', '', now, name||'', '', comment||'']];
+      // Determinar el estado real basado en el comentario
+      let realStatus = 'Available';
+      if (comment && comment.startsWith('Missing key')) realStatus = 'Missing Key';
+      else if (comment && comment.startsWith('Key not working')) realStatus = 'Key not working';
+      else if (comment === 'No key') realStatus = 'No key';
+      values = [[realStatus, '', '', '', now, name||'', '', comment||'']];
     }
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
