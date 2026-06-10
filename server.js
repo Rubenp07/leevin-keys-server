@@ -38,7 +38,7 @@ async function findKeyRow(code) {
 
 app.post('/update-key', async (req, res) => {
   try {
-    const { code, status, name, dept } = req.body;
+    const { code, status, name, dept, comment } = req.body;
     if (!code || !status) return res.status(400).json({ error: 'Faltan campos' });
 
     const rowNum = await findKeyRow(code);
@@ -48,14 +48,16 @@ app.post('/update-key', async (req, res) => {
     let values;
 
     if (status === 'In use') {
-      values = [['In use', name || '', dept || '', now, '', '']];
+      // H=In use, I=nombre, J=dept, K=fecha tomada, L=vacío, M=vacío, N=vacío, O=comentario
+      values = [['In use', name || '', dept || '', now, '', '', '', comment || '']];
     } else {
-      values = [['Available', '', '', '', now, name || '']];
+      // H=Available, I=vacío, J=vacío, K=vacío, L=fecha devuelta, M=última persona, N=vacío, O=comentario
+      values = [['Available', '', '', '', now, name || '', '', comment || '']];
     }
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: SHEET_NAME + '!H' + rowNum + ':M' + rowNum,
+      range: SHEET_NAME + '!H' + rowNum + ':O' + rowNum,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values }
     });
@@ -67,6 +69,43 @@ app.post('/update-key', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Recordatorio automático: revisa cada hora llaves con más de 2 días en uso
+async function checkReminders() {
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: SHEET_NAME + '!E:N'
+    });
+    const rows = res.data.values || [];
+    const now = new Date();
+    for (let i = 1; i < rows.length; i++) {
+      const status = rows[i][3]; // col H
+      const dateTaken = rows[i][6]; // col K
+      const reminded = rows[i][9]; // col N
+      if (status === 'In use' && dateTaken && reminded !== 'Sí') {
+        const parts = dateTaken.split(/[/, ]/);
+        const taken = new Date(parts[2], parts[1]-1, parts[0]);
+        const diffDays = (now - taken) / (1000 * 60 * 60 * 24);
+        if (diffDays >= 2) {
+          const rowNum = i + 1;
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: SHEET_ID,
+            range: SHEET_NAME + '!N' + rowNum,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: { values: [['Sí']] }
+          });
+          console.log('Recordatorio marcado: fila ' + rowNum);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error en recordatorios:', err.message);
+  }
+}
+
+setInterval(checkReminders, 60 * 60 * 1000); // cada hora
+checkReminders(); // al arrancar
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
