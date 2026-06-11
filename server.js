@@ -108,8 +108,7 @@ app.post('/update-keyinfo', async (req, res) => {
     if (!rowNum) return res.status(404).json({ error: 'Propiedad no encontrada: ' + property });
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: "'Keys Information'!F" + rowNum + ':N' + rowNum,
-      valueInputOption: 'USER_ENTERED',
+range: "'Keys Information'!G" + rowNum + ':O' + rowNum,      valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[type||'', aptKeys||'', buildingDoor||'', codedKey||'', codedKey2||'', fob||'', codedFob||'', codeAccess||'', extraInfo||'']] }
     });
     console.log('KI OK: ' + property + ' | fila ' + rowNum);
