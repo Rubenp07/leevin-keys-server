@@ -1,9 +1,11 @@
 const express = require('express');
 const { google } = require('googleapis');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname)));
 
 const SHEET_ID = '1F0s1yeToNckVqeu1mh3uNNh42u1zvg5SMEHLo4l22FU';
 const SHEET_NAME = 'prueba';
@@ -47,14 +49,9 @@ app.get('/key-info/:code', async (req, res) => {
     });
     const row = result.data.values?.[0] || [];
     res.json({
-      status:       row[0] || '',
-      name:         row[1] || '',
-      dept:         row[2] || '',
-      dateTaken:    row[3] || '',
-      dateReturned: row[4] || '',
-      lastPerson:   row[5] || '',
-      reminder:     row[6] || '',
-      comment:      row[7] || '',
+      status: row[0] || '', name: row[1] || '', dept: row[2] || '',
+      dateTaken: row[3] || '', dateReturned: row[4] || '',
+      lastPerson: row[5] || '', reminder: row[6] || '', comment: row[7] || '',
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -163,6 +160,10 @@ setInterval(checkReminders, 60 * 60 * 1000);
 checkReminders();
 
 app.get('/health', (req, res) => res.json({ ok: true }));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'leevin_keys_control.html'));
+});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log('Servidor corriendo en puerto ' + PORT));
