@@ -92,6 +92,37 @@ app.post('/update-key', async (req, res) => {
   }
 });
 
+app.post('/update-keyinfo', async (req, res) => {
+  try {
+    const { property, type, aptKeys, buildingDoor, codedKey, codedKey2, fob, codedFob, codeAccess, extraInfo } = req.body;
+    if (!property) return res.status(400).json({ error: 'Falta propiedad' });
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Keys Information!F:F'
+    });
+    const rows = result.data.values || [];
+    let rowNum = null;
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i][0] && rows[i][0].toString().trim() === property) {
+        rowNum = i + 1;
+        break;
+      }
+    }
+    if (!rowNum) return res.status(404).json({ error: 'Propiedad no encontrada: ' + property });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: 'Keys Information!G' + rowNum + ':O' + rowNum,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[type||'', aptKeys||'', buildingDoor||'', codedKey||'', codedKey2||'', fob||'', codedFob||'', codeAccess||'', extraInfo||'']] }
+    });
+    console.log('KI OK: ' + property + ' | fila ' + rowNum);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('KI Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 async function checkReminders() {
   try {
     const res = await sheets.spreadsheets.values.get({
