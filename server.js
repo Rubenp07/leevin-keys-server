@@ -98,8 +98,7 @@ app.post('/update-keyinfo', async (req, res) => {
     if (!property) return res.status(400).json({ error: 'Falta propiedad' });
     const result = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "'Keys Information'!F:F"
-    });
+range: "\'Keys Information\'!G" + rowNum + ':O' + rowNum,    });
     const rows = result.data.values || [];
     let rowNum = null;
     for (let i = 0; i < rows.length; i++) {
