@@ -9,7 +9,7 @@ app.use(express.static(path.join(__dirname)));
 
 const SHEET_ID = '1F0s1yeToNckVqeu1mh3uNNh42u1zvg5SMEHLo4l22FU';
 const SHEET_NAME = 'prueba';
- 
+
 const auth = new google.auth.JWT(
   'keys-system@clever-environs-478712-g2.iam.gserviceaccount.com',
   null,
@@ -34,6 +34,18 @@ async function findKeyRow(code) {
   const rows = res.data.values || [];
   for (let i = 0; i < rows.length; i++) {
     if (rows[i][0] && rows[i][0].toString().trim().toUpperCase() === code.toUpperCase()) return i + 1;
+  }
+  return null;
+}
+
+async function findPropertyRow(property) {
+  const result = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: "'Keys Information'!E:E"
+  });
+  const rows = result.data.values || [];
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][0] && rows[i][0].toString().trim() === property) return i + 1;
   }
   return null;
 }
@@ -89,26 +101,45 @@ app.post('/update-key', async (req, res) => {
   }
 });
 
+// Lookup de Keys Information para prellenar el modal al devolver una llave
+app.get('/keyinfo-lookup', async (req, res) => {
+  try {
+    const property = req.query.property;
+    if (!property) return res.status(400).json({ error: 'Falta propiedad' });
+    const rowNum = await findPropertyRow(property);
+    if (!rowNum) return res.status(404).json({ error: 'Propiedad no encontrada: ' + property });
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: "'Keys Information'!F" + rowNum + ':O' + rowNum
+    });
+    const row = result.data.values?.[0] || [];
+    res.json({
+      eircode: row[0] || '',
+      type: row[1] || '',
+      aptKeys: row[2] || '',
+      buildingDoor: row[3] || '',
+      codedKey: row[4] || '',
+      codedKey2: row[5] || '',
+      fob: row[6] || '',
+      codedFob: row[7] || '',
+      codeAccess: row[8] || '',
+      extraInfo: row[9] || '',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/update-keyinfo', async (req, res) => {
   try {
     const { property, type, aptKeys, buildingDoor, codedKey, codedKey2, fob, codedFob, codeAccess, extraInfo } = req.body;
     if (!property) return res.status(400).json({ error: 'Falta propiedad' });
-    const result = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: "'Keys Information'!E:E"
-    });
-    const rows = result.data.values || [];
-    let rowNum = null;
-    for (let i = 0; i < rows.length; i++) {
-      if (rows[i][0] && rows[i][0].toString().trim() === property) {
-        rowNum = i + 1;
-        break;
-      }
-    }
+    const rowNum = await findPropertyRow(property);
     if (!rowNum) return res.status(404).json({ error: 'Propiedad no encontrada: ' + property });
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-range: "'Keys Information'!G" + rowNum + ':O' + rowNum,      valueInputOption: 'USER_ENTERED',
+      range: "'Keys Information'!G" + rowNum + ':O' + rowNum,
+      valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[type||'', aptKeys||'', buildingDoor||'', codedKey||'', codedKey2||'', fob||'', codedFob||'', codeAccess||'', extraInfo||'']] }
     });
     console.log('KI OK: ' + property + ' | fila ' + rowNum);
