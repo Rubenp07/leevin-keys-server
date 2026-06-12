@@ -50,6 +50,58 @@ async function findPropertyRow(property) {
   return null;
 }
 
+const DEPT_COLUMNS = { 'Sales Home':'A', 'Customer Service':'B', 'Maintenance':'C', 'HK':'D', 'Property Management':'E', 'Landlord':'F' };
+
+app.post('/add-employee', async (req, res) => {
+  try {
+    const { name, email, dept } = req.body;
+    if (!name || !email || !dept) return res.status(400).json({ error: 'Faltan campos' });
+
+    // 1. Añadir a la lista Person/E-Mail (columnas H/I) empezando en fila 2
+    const hiResult = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: "'Departments'!H2:I"
+    });
+    const hiRows = hiResult.data.values || [];
+    const exists = hiRows.some(r => r[1] && r[1].toString().trim().toLowerCase() === email.toLowerCase());
+    if (!exists) {
+      const nextRow = 2 + hiRows.length;
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: "'Departments'!H" + nextRow + ':I' + nextRow,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [[name, email]] }
+      });
+    }
+
+    // 2. Añadir el nombre al final de la columna del departamento (empezando en fila 4)
+    const col = DEPT_COLUMNS[dept];
+    if (col) {
+      const colResult = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: "'Departments'!" + col + '4:' + col
+      });
+      const colRows = colResult.data.values || [];
+      const existsInDept = colRows.some(r => r[0] && r[0].toString().trim().toLowerCase() === name.toLowerCase());
+      if (!existsInDept) {
+        const nextDeptRow = 4 + colRows.length;
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: "'Departments'!" + col + nextDeptRow,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [[name]] }
+        });
+      }
+    }
+
+    console.log('EMPLOYEE OK: ' + name + ' | ' + email + ' | ' + dept);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Employee Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/key-info/:code', async (req, res) => {
   try {
     const code = req.params.code.toUpperCase();
