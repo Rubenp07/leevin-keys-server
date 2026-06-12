@@ -72,7 +72,7 @@ app.get('/key-info/:code', async (req, res) => {
 
 app.post('/update-key', async (req, res) => {
   try {
-    const { code, status, name, dept, comment } = req.body;
+    const { code, status, name, dept, comment, property, eircode, email, action } = req.body;
     if (!code || !status) return res.status(400).json({ error: 'Faltan campos' });
     const rowNum = await findKeyRow(code);
     if (!rowNum) return res.status(404).json({ error: 'Llave no encontrada: ' + code });
@@ -94,6 +94,24 @@ app.post('/update-key', async (req, res) => {
       requestBody: { values }
     });
     console.log('OK: ' + code + ' -> ' + status + ' | ' + name + ' | fila ' + rowNum);
+
+    // Registrar movimiento en LogsNew
+    if (action === 'Take' || action === 'Return') {
+      try {
+        const timestamp = new Date().toISOString().slice(0,19).replace('T',' ');
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: SHEET_ID,
+          range: "'LogsNew'!A:I",
+          valueInputOption: 'USER_ENTERED',
+          insertDataOption: 'INSERT_ROWS',
+          requestBody: { values: [[timestamp, action, code, property||'', eircode||'', dept||'', name||'', email||'', comment||'']] }
+        });
+        console.log('LOG OK: ' + action + ' ' + code);
+      } catch (logErr) {
+        console.error('Log Error:', logErr.message);
+      }
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error('Error:', err.message);
